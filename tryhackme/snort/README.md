@@ -1,361 +1,363 @@
-# 🐗 Snort — IDS/IPS na Prática
+# 🐗 Snort — IDS/IPS in Practice
 
-**Plataforma:** TryHackMe  
-**Nível:** ⭐⭐ Médio  
-**Categoria:** Blue Team / Network Security / IDS-IPS  
-**Data:** 12-13/07/2026  
-**Ambiente extra:** Laboratório pessoal no Ubuntu (Kali)
-
----
-
-## O que é Snort?
-
-Snort é um **NIDS/NIPS open source** criado por Martin Roesch e mantido pela Cisco Talos.
-É uma das ferramentas mais usadas em ambientes SOC reais para monitorar e proteger redes.
-
-**Versão utilizada:** 2.9.20 GRE (Build 82)
+**Platform:** TryHackMe  
+**Level:** ⭐⭐ Medium  
+**Category:** Blue Team / Network Security / IDS-IPS  
+**Date:** July 12-13, 2026  
+**Extra environment:** Personal lab on Ubuntu
 
 ---
 
-## 🧠 Conceitos base — IDS vs IPS
+## What is Snort?
 
-### A analogia do porteiro
-- **IDS** = porteiro que **observa e alerta** — não barra ninguém
-- **IPS** = porteiro que **observa e bloqueia** — age na hora
+Snort is an open-source **NIDS/NIPS** created by Martin Roesch and maintained by Cisco Talos.
+It is one of the most widely used tools in real SOC environments for monitoring and protecting networks.
 
-| Sigla | Tipo | Onde | Age? |
-|-------|------|------|------|
-| NIDS | Network IDS | Rede toda | ❌ só alerta |
-| HIDS | Host IDS | Um computador | ❌ só alerta |
-| NIPS | Network IPS | Rede toda | ✅ bloqueia |
-| HIPS | Host IPS | Um computador | ✅ bloqueia |
-| NBA | Behaviour-based | Rede toda | ✅ bloqueia |
-
-### Tipos de detecção
-| Técnica | Como funciona |
-|---------|--------------|
-| **Signature-Based** | Compara com padrões conhecidos de ataques |
-| **Behaviour-Based** | Aprende o normal e alerta o anormal (precisa de *baselining*) |
-| **Policy-Based** | Compara com regras e políticas da organização |
+**Version used:** 2.9.20 GRE (Build 82)
 
 ---
 
-## ⚙️ Modos do Snort
+## 🧠 Core Concepts — IDS vs IPS
 
-| Modo | O que faz |
-|------|----------|
-| **Sniffer** | Lê e exibe pacotes na tela em tempo real |
-| **Logger** | Captura e salva pacotes em arquivo |
-| **IDS/IPS** | Analisa tráfego com regras e gera alertas ou bloqueia |
+### The security guard analogy
+- **IDS** = guard who **watches and alerts** — doesn't stop anyone
+- **IPS** = guard who **watches and blocks** — acts immediately
+
+| Acronym | Type | Scope | Acts? |
+|---------|------|-------|-------|
+| NIDS | Network IDS | Entire network | ❌ alerts only |
+| HIDS | Host IDS | Single device | ❌ alerts only |
+| NIPS | Network IPS | Entire network | ✅ blocks |
+| HIPS | Host IPS | Single device | ✅ blocks |
+| NBA | Behaviour-based | Entire network | ✅ blocks |
+
+### Detection techniques
+| Technique | How it works |
+|-----------|-------------|
+| **Signature-Based** | Matches traffic against known attack patterns |
+| **Behaviour-Based** | Learns normal traffic and flags anomalies (requires *baselining*) |
+| **Policy-Based** | Compares traffic against organizational security policies |
 
 ---
 
-## 📌 Primeiros comandos
+## ⚙️ Snort Modes
+
+| Mode | What it does |
+|------|-------------|
+| **Sniffer** | Reads and displays packets on screen in real time |
+| **Logger** | Captures and saves packets to a file |
+| **IDS/IPS** | Analyzes traffic using rules and generates alerts or blocks |
+
+---
+
+## 📌 First Commands
 
 ```bash
-# Verificar versão e build number
+# Check version and build number
 snort -V
 
-# Testar configuração
+# Test configuration file
 sudo snort -c /etc/snort/snort.conf -T
 ```
 
-### 🖼️ Print — Configuração validada no Ubuntu pessoal
-![Config validada](prints/snort-config-validada.png)
+### 🖼️ Screenshot — Config validated on personal Ubuntu
+![Config validated](prints/snort-config-validada.png)
 
-> Snort rodando na interface **wlo1** (Wi-Fi do Ubuntu).
-> A mensagem **"Snort successfully validated the configuration!"** confirma que tudo está correto.
+> Snort running on interface **wlo1** (Wi-Fi).
+> The message **"Snort successfully validated the configuration!"** confirms everything is set up correctly.
 
 ---
 
-## 👁️ Modo Sniffer
+## 👁️ Sniffer Mode
 
-| Parâmetro | O que mostra |
-|-----------|-------------|
-| `-v` | IP origem/destino, protocolo |
-| `-d` | + conteúdo do pacote (payload) |
-| `-e` | + endereço MAC |
-| `-X` | Pacote inteiro em HEX |
-| `-i interface` | Define qual placa de rede monitorar |
+| Parameter | What it shows |
+|-----------|--------------|
+| `-v` | Source/destination IP, protocol |
+| `-d` | + packet payload content |
+| `-e` | + MAC address (link layer) |
+| `-X` | Full packet in HEX |
+| `-i interface` | Define which network interface to listen on |
 
 ```bash
-sudo snort -v -i wlo1     # básico
-sudo snort -vd            # + conteúdo
-sudo snort -X             # tudo em HEX
+sudo snort -v -i wlo1     # basic
+sudo snort -vd            # + payload
+sudo snort -X             # full HEX dump
 ```
 
-### 🖼️ Print — Output do modo -X (HEX completo)
-![Snort modo X](prints/snort-modo-x.png)
+### 🖼️ Screenshot — Sniffer mode -X output (full HEX)
+![Snort -X mode](prints/snort-modo-x.png)
 
-> Tráfego UDP IPv6 capturado em tempo real.
-> No modo `-X` cada byte do pacote é exibido em hexadecimal e texto ASCII ao lado.
+> Real-time IPv6 UDP traffic captured.
+> In `-X` mode, every byte of the packet is displayed in hexadecimal with ASCII text alongside.
 
 ---
 
-## 💾 Modo Logger
+## 💾 Logger Mode
 
 ```bash
-# Salvar em formato binário
+# Save in binary format
 sudo snort -dev -l .
 
-# Salvar em formato ASCII (legível)
+# Save in ASCII format (human-readable)
 sudo snort -dev -K ASCII -l .
 
-# Ler um log salvo
+# Read a saved log
 sudo snort -r snort.log.XXXXXXXXXX
 
-# Filtrar ao ler
+# Filter while reading
 sudo snort -r snort.log.XXXXXXXXXX 'tcp and port 80'
 sudo snort -r snort.log.XXXXXXXXXX -n 10
 ```
 
-| Formato | Como fica | Quem lê |
-|---------|----------|---------|
-| Binário (padrão) | Um arquivo `.log` | Snort, tcpdump, Wireshark |
-| ASCII (`-K ASCII`) | Pastas por IP com arquivos texto | Qualquer editor |
+| Format | Output | Who can read it |
+|--------|--------|----------------|
+| Binary (default) | Single `.log` file | Snort, tcpdump, Wireshark |
+| ASCII (`-K ASCII`) | Folders named by IP | Any text editor |
+
+> ⚠️ Logs saved with `-K ASCII` **cannot** be read with `-r`. Incompatible formats!
 
 ---
 
-## 🚨 Modo IDS/IPS
+## 🚨 IDS/IPS Mode
 
-### Parâmetros
+### Parameters
 
-| Parâmetro | Função |
-|-----------|--------|
-| `-c arquivo.conf` | Define arquivo de configuração |
-| `-A console` | Alertas rápidos no terminal |
-| `-A cmg` | Alertas + payload em HEX no terminal |
-| `-A full` | Alertas completos (só em arquivo) |
-| `-A fast` | Alertas resumidos (só em arquivo) |
-| `-A none` | Desativa alertas |
-| `-N` | Desativa logging |
-| `-D` | Roda em background (daemon) |
-| `-q` | Modo silencioso (sem banner) |
+| Parameter | Function |
+|-----------|----------|
+| `-c file.conf` | Define configuration file |
+| `-A console` | Fast alerts on terminal |
+| `-A cmg` | Alerts + payload in HEX on terminal |
+| `-A full` | Full alerts (file only) |
+| `-A fast` | Brief alerts (file only) |
+| `-A none` | Disable alerts |
+| `-N` | Disable logging |
+| `-D` | Run in background (daemon) |
+| `-q` | Quiet mode (no banner) |
 
 ```bash
-# Alertas no terminal
+# Real-time alerts on terminal
 sudo snort -c /etc/snort/snort.conf -A console
 
-# Salvar alertas completos
+# Save full alerts to file
 sudo snort -c /etc/snort/snort.conf -A full -l .
 
-# Rodar em background
+# Run in background
 sudo snort -c /etc/snort/snort.conf -D
-ps -ef | grep snort        # verificar processo
-sudo kill -9 PID           # parar processo
+ps -ef | grep snort        # check running process
+sudo kill -9 PID           # stop process
 ```
 
-### Diferença no output
+### Output difference
 
 ```
-IDS (alerta):   [**] [1:10000001:0] ICMP Packet found [**]
-IPS (bloqueia): [Drop] [**] [1:10000001:0] ICMP Packet found [**]
+IDS (alert):  [**] [1:10000001:0] ICMP Packet found [**]
+IPS (block):  [Drop] [**] [1:10000001:0] ICMP Packet found [**]
 ```
 
 ---
 
-## 🏋️ Exercícios práticos — TryHackMe
+## 🏋️ Practical Exercises — TryHackMe
 
-### TASK-6 — Análise de logs com Snort
+### TASK-6 — Log analysis with Snort
 ```bash
 sudo snort -dev -K ASCII -l .
 ```
 
-#### 🖼️ Print — Resultado TASK-6
+#### 🖼️ Screenshot — TASK-6 result
 ![TASK-6](prints/task6-resultado.png)
 
-**Resultados:**
-- Snort processou **4 pacotes**
-- Tráfego TCP: `145.254.160.237 → 65.208.228.223:80`
+**Results:**
+- Snort processed **4 packets**
+- TCP traffic: `145.254.160.237 → 65.208.228.223:80`
 
 ---
 
-### TASK-7 — Modo IDS com tráfego HTTP
+### TASK-7 — IDS mode with HTTP traffic
 ```bash
 sudo snort -c /etc/snort/snort.conf -A full -l .
-sudo ./traffic-generator.sh  # escolher TASK-7
+sudo ./traffic-generator.sh  # choose TASK-7
 ```
 
-#### 🖼️ Print — Resultado TASK-7
+#### 🖼️ Screenshot — TASK-7 result
 ![TASK-7](prints/task7-http-get.png)
 
-**Resultados encontrados no output:**
-- **HTTP GET methods detectados:** `2` ✅
+**Results found in output:**
+- **HTTP GET methods detected:** `2` ✅
 - HTTP Request Headers extracted: 127
 - HTTP Response Headers extracted: 3
 - Total packets processed: 5136
 
 ---
 
-## 📁 Análise de PCAP
+## 📁 PCAP Investigation
 
 ```bash
-# Analisar um arquivo PCAP
-sudo snort -c /etc/snort/snort.conf -q -r arquivo.pcap -A console
+# Analyze a single PCAP file
+sudo snort -c /etc/snort/snort.conf -q -r file.pcap -A console
 
-# Analisar múltiplos PCAPs
+# Analyze multiple PCAPs
 sudo snort -c /etc/snort/snort.conf -q --pcap-list="a.pcap b.pcap" -A console
 
-# Ver qual PCAP gerou cada alerta
+# Show which PCAP triggered each alert
 sudo snort -c /etc/snort/snort.conf -q --pcap-list="a.pcap b.pcap" -A console --pcap-show
 ```
 
 ---
 
-## 📝 Regras do Snort
+## 📝 Snort Rules
 
-### Estrutura completa
+### Full structure
 ```
-alert  tcp  any  any  ->  192.168.1.0/24  80  (msg:"Mensagem"; sid:1000001; rev:1;)
-ação  proto orig orig dir      dest       dest        opções
-```
-
-### Ações
-| Ação | O que faz |
-|------|----------|
-| `alert` | Gera alerta e loga |
-| `log` | Só loga |
-| `drop` | Bloqueia (IPS) |
-| `reject` | Bloqueia e avisa o remetente |
-
-### Direção
-```
-->   origem → destino
-<>   bidirecional (não existe <- no Snort!)
+alert  tcp  any  any  ->  192.168.1.0/24  80  (msg:"Message"; sid:1000001; rev:1;)
+action proto src  src  dir     dst        dst       options
 ```
 
-### Filtragem de IPs e Portas
+### Actions
+| Action | What it does |
+|--------|-------------|
+| `alert` | Generate alert and log |
+| `log` | Log only |
+| `drop` | Block and log (IPS) |
+| `reject` | Block, log and notify sender |
+
+### Direction
+```
+->   source → destination
+<>   bidirectional (there is no <- in Snort!)
+```
+
+### IP and Port filtering
 ```bash
-# IP específico
-alert icmp 192.168.1.56 any <> any any (msg:"IP fixo"; sid:1000001; rev:1;)
+# Specific IP
+alert icmp 192.168.1.56 any <> any any (msg:"Specific IP"; sid:1000001; rev:1;)
 
 # Subnet
 alert icmp 192.168.1.0/24 any <> any any (msg:"Subnet"; sid:1000001; rev:1;)
 
-# Excluir IP (!)
-alert icmp !192.168.1.0/24 any <> any any (msg:"Externo"; sid:1000001; rev:1;)
+# Exclude IP (!)
+alert icmp !192.168.1.0/24 any <> any any (msg:"External"; sid:1000001; rev:1;)
 
-# Porta específica
+# Specific port
 alert tcp any any -> any 22 (msg:"SSH"; sid:1000001; rev:1;)
 
-# Faixa de portas
+# Port range
 alert tcp any any -> any 1:1024 (msg:"System ports"; sid:1000001; rev:1;)
 
-# Múltiplas portas
-alert tcp any any -> any [21,23] (msg:"FTP/Telnet"; sid:1000001; rev:1;)
+# Multiple ports
+alert tcp any any -> any [21,23] (msg:"FTP or Telnet"; sid:1000001; rev:1;)
 ```
 
-### Opções de payload
+### Payload options
 ```bash
-# Buscar texto no pacote
-alert tcp any any -> any 80 (msg:"GET"; content:"GET"; sid:1000001; rev:1;)
+# Search for text inside packet
+alert tcp any any -> any 80 (msg:"GET found"; content:"GET"; sid:1000001; rev:1;)
 
-# Ignorar maiúsculas
-alert tcp any any -> any 80 (msg:"GET"; content:"GET"; nocase; sid:1000001; rev:1;)
+# Case insensitive
+alert tcp any any -> any 80 (msg:"GET found"; content:"GET"; nocase; sid:1000001; rev:1;)
 ```
 
-### Opções de não-payload (cabeçalho)
+### Non-payload options (header)
 ```bash
-# Filtrar por IP ID
-alert any any -> any any (msg:"IP ID"; id:35369; sid:1000001; rev:1;)
+# Filter by IP ID
+alert any any -> any any (msg:"IP ID filter"; id:35369; sid:1000001; rev:1;)
 
-# Filtrar flags TCP
+# TCP flags
 alert tcp any any -> any any (msg:"SYN scan"; flags:S; sid:1000001; rev:1;)
 alert tcp any any -> any any (msg:"Push-ACK"; flags:PA; sid:1000002; rev:1;)
 
-# Mesmo IP origem e destino
-alert udp any any <> any any (msg:"Same IP"; sameip; sid:1000001; rev:1;)
+# Same source and destination IP
+alert udp any any <> any any (msg:"Same IP src/dst"; sameip; sid:1000001; rev:1;)
 
-# Tamanho do payload
-alert ip any any <> any any (msg:"Pacote grande"; dsize:100<>300; sid:1000001; rev:1;)
+# Payload size
+alert ip any any <> any any (msg:"Large packet"; dsize:100<>300; sid:1000001; rev:1;)
 ```
 
-### Flags TCP — referência
-| Flag | Letra | Uso |
-|------|-------|-----|
-| SYN | `S` | Início de conexão — usado em scans |
-| ACK | `A` | Confirmação |
-| FIN | `F` | Fim de conexão |
-| RST | `R` | Reset |
-| PSH | `P` | Push (enviar dados imediatamente) |
-| URG | `U` | Urgente |
+### TCP Flags reference
+| Flag | Letter | Meaning |
+|------|--------|---------|
+| SYN | `S` | Connection start — used in scans |
+| ACK | `A` | Acknowledgement |
+| FIN | `F` | Connection end |
+| RST | `R` | Reset/abort |
+| PSH | `P` | Push data immediately |
+| URG | `U` | Urgent |
 
-### SIDs — regra de numeração
+### SID numbering rule
 ```
-< 100          → Reservado
-100 - 999.999  → Regras do Snort
->= 1.000.000   → Suas regras personalizadas
+< 100           → Reserved
+100 - 999,999   → Built-in Snort rules
+>= 1,000,000    → User-created rules
 ```
 
 ---
 
-## 🧪 Laboratório pessoal — Ubuntu
+## 🧪 Personal Lab — Ubuntu
 
-Além das salas do TryHackMe, instalei o Snort no meu próprio Ubuntu
-e criei regras personalizadas para testar na prática.
+Beyond the TryHackMe room, I installed Snort on my own Ubuntu machine
+and created custom rules to test in a real environment.
 
-### Regra criada — detectar pings em português
+### Custom rule — detect pings with Portuguese alert message
 
 ```bash
 # /etc/snort/rules/local.rules
 alert icmp any any <> any any (msg:"ALERTA: alguem esta pingando nossa maquina!"; sid:1000001; rev:1;)
 ```
 
-### Rodando na interface Wi-Fi (wlo1)
+### Running on Wi-Fi interface (wlo1)
 ```bash
 sudo snort -A console -q -c /etc/snort/snort.conf -i wlo1
 ```
 
-#### 🖼️ Print — Regra detectando pings em tempo real
-![Regra personalizada](prints/snort-regra-personalizada.png)
+#### 🖼️ Screenshot — Custom rule detecting real pings
+![Custom rule](prints/snort-regra-personalizada.png)
 
-> A regra disparou ao detectar tráfego **IPV6-ICMP** — pings reais da rede local.
-> Isso confirma que o Snort está funcionando corretamente no ambiente pessoal.
+> The rule fired on real **IPV6-ICMP** traffic from the local network.
+> This confirms Snort is working correctly in the personal environment.
 
 ---
 
-### BAD-TRAFFIC — mesmo IP de origem e destino
+### BAD-TRAFFIC — same source and destination IP
 
-O Snort também detectou automaticamente tráfego com **mesmo IP de origem e destino**
-(comportamento suspeito associado a loops ou ataques):
+Snort also automatically detected traffic with the **same source and destination IP**
+(suspicious behavior associated with loops or attacks):
 
 ```
 [1:527:8] BAD-TRAFFIC same SRC/DST
 {UDP} 0.0.0.0:68 -> 255.255.255.255:67
 ```
 
-#### 🖼️ Print — BAD-TRAFFIC detectado
+#### 🖼️ Screenshot — BAD-TRAFFIC detected
 ![Bad traffic](prints/snort-bad-traffic.png)
 
 ---
 
-## ⚙️ Arquivo de configuração (snort.conf)
+## ⚙️ Configuration file (snort.conf)
 
 ```bash
 sudo nano /etc/snort/snort.conf
 sudo nano /etc/snort/rules/local.rules
 ```
 
-### Variáveis principais
-| Variável | Função | Exemplo |
-|----------|--------|---------|
-| `HOME_NET` | Sua rede protegida | `192.168.1.0/24` |
-| `EXTERNAL_NET` | Rede externa | `!$HOME_NET` |
-| `RULE_PATH` | Pasta das regras | `/etc/snort/rules` |
+### Key variables
+| Variable | Purpose | Example |
+|----------|---------|---------|
+| `HOME_NET` | Your protected network | `192.168.1.0/24` |
+| `EXTERNAL_NET` | External network | `!$HOME_NET` |
+| `RULE_PATH` | Rules directory | `/etc/snort/rules` |
 
-### Tipos de regras disponíveis
-| Tipo | Custo | Frequência |
-|------|-------|-----------|
-| Community | Gratuito, sem cadastro | Menos frequente |
-| Registered | Gratuito, com cadastro | 30 dias de atraso |
-| Subscriber | Pago | 2x/semana |
+### Rule types available
+| Type | Cost | Update frequency |
+|------|------|-----------------|
+| Community | Free, no registration | Less frequent |
+| Registered | Free, registration required | 30-day delay |
+| Subscriber | Paid | Twice a week |
 
 ---
 
-## 🚀 Cheatsheet rápido
+## 🚀 Quick Cheatsheet
 
 ```bash
-# Verificação
+# Verification
 snort -V
 sudo snort -c /etc/snort/snort.conf -T
 
@@ -366,16 +368,16 @@ sudo snort -X
 # Logger
 sudo snort -dev -l .
 sudo snort -dev -K ASCII -l .
-sudo snort -r arquivo.log 'tcp and port 80'
+sudo snort -r file.log 'tcp and port 80'
 
 # IDS/IPS
 sudo snort -c /etc/snort/snort.conf -A console
 sudo snort -c /etc/snort/snort.conf -A full -l .
 
 # PCAP
-sudo snort -c /etc/snort/snort.conf -q -r arquivo.pcap -A console
+sudo snort -c /etc/snort/snort.conf -q -r file.pcap -A console
 
-# Regras
+# Rules
 sudo nano /etc/snort/rules/local.rules
-rm alert   # limpar alertas anteriores
+rm alert    # clear previous alerts
 ```
